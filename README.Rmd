@@ -24,15 +24,15 @@ The goal of QuanT is to identifying unmeasured heterogeneity in microbiome data 
 
 You can install QuanT from [GitHub](https://github.com) with:
 
-```{r}
-# devtools::install_github("jiuyaolu/QuanT")
+```{r, eval=FALSE}
+devtools::install_github("jiuyaolu/QuanT")
 ```
 
 ## Example
 
 This is a basic example which shows how to apply QuanT to the CRC dataset.
 
-```{r example}
+```{r example, eval=FALSE}
 library(QuanT)
 covariates = model.matrix(~ subtype + age + gender, data=crc)[,-1]
 qsv = QuanT(crc$rela, covariates)
