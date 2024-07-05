@@ -18,6 +18,9 @@ knitr::opts_chunk$set(
 )
 ```
 
+## QuanT
+Unmeasured technical and biomedical heterogeneity in microbiome data can arise from differential processing and design. Uncorrected for, this can lead to spurious results.  We propose the Quantile Thresholding (QuanT) approach, a comprehensive non-parametric hidden variable inference method that accommodates the complex distributions of microbial read counts and relative abundances.
+
 ## The CRC dataset
 We will use the CRC dataset as an example to show how to use the `QuanT` R package. We will also run SVA and RUV and compare them with QuanT based on the CRC dataset.
 
