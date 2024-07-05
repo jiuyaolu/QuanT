@@ -28,4 +28,13 @@ covariates = model.matrix(~ subtype + age + gender, data=crc)[,-1]
 qsv = QuanT(crc$rela, covariates)
 ```
 
+A detailed vignette can be accessed with
+
+``` r
+browseVignettes("QuanT")
+```
+
+It introduces the CRC dataset and explains how to analyze the CRC
+dataset using QuanT. It also compares SVA and RUV with QuanT.
+
 <!-- You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. -->
