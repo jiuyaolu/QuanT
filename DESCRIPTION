@@ -1,0 +1,30 @@
+Package: QuanT
+Date: 2024-06-27
+Title: QuanT
+Version: 0.0.0.9000
+Authors@R: 
+    person("Jiuyao", "Lu", , "lujiuyao@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: Identifying unmeasured heterogeneity in microbiome data via quantile thresholding.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Depends: 
+    R (>= 2.10)
+LazyData: true
+Imports: 
+    dplyr,
+    Matrix,
+    nortest,
+    quantreg,
+    RSpectra
+Suggests: 
+    BiocManager,
+    ggplot2,
+    knitr,
+    mgcv,
+    rmarkdown,
+    RUVSeq,
+    sva
+VignetteBuilder: knitr
