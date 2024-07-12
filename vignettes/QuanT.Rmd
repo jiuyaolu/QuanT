@@ -37,7 +37,7 @@ As you can see, the list `crc` includes the following components.
 
 1. otu: the absolute abundance(counts) matrix
 2. rela: the relative abundance matrix
-3. batchid: the batch(study) indicator
+3. groupid: the group(study) indicator
 4. condition: a factor with three levels: adenoma, CRC, control
 5. age: a factor with two levels: adult, senior
 6. subtype: a factor with five levels: adenoma, carcinoma, adenocarcinoma, advancedadenoma, control
@@ -52,11 +52,11 @@ qsv = QuanT(crc$rela, covariates)
 
 Now we have constructed the QSVs and stored them into the `qsv` object. We can plot the first two QSVs and color the points based on the true group ID.
 ```{r}
-plot(qsv[,1], qsv[,2], col=crc$batchid, 
+plot(qsv[,1], qsv[,2], col=crc$groupid, 
      cex.lab=0.5, cex.axis=0.5, cex=0.5)
 ```
 
-The two batches are approximately seperated by the first two QSVs! This indicates that QuanT has succesfully identified the unmeasured heterogeneity.
+The two groups are approximately seperated by the first two QSVs! This indicates that QuanT has succesfully identified the unmeasured heterogeneity.
 
 ## Running SVA and RUV
 ### Installation
@@ -122,7 +122,7 @@ get_pv = function(rela, surrogates) {
 }
 
 pv_no_correction = get_pv(crc$rela, NULL)
-pv_batch = get_pv(crc$rela, crc$batchid)
+pv_group = get_pv(crc$rela, crc$groupid)
 pv_quant = get_pv(crc$rela, qsv)
 pv_sva = get_pv(crc$rela, sv)
 pv_ruv = get_pv(crc$rela, ruv)
@@ -131,7 +131,7 @@ pv_ruv = get_pv(crc$rela, ruv)
 Now we have obtained the p-values from each method. We apply Benjamini-Hochberg procedure to the p-values and use a threshold of 0.05 to determine the significant taxa. Below are the indices of the significant taxa from each method.
 ```{r}
 which(p.adjust(pv_no_correction,"BH") <= 0.05)
-which(p.adjust(pv_batch,"BH") <= 0.05)
+which(p.adjust(pv_group,"BH") <= 0.05)
 which(p.adjust(pv_quant,"BH") <= 0.05)
 which(p.adjust(pv_sva,"BH") <= 0.05)
 which(p.adjust(pv_ruv,"BH") <= 0.05)
@@ -142,7 +142,7 @@ As can be seen from the list above, using QuanT leads to 4 discoveries which are
 Other than thresholding Benjamini-Hochberg adjusted p-values at 0.05, we can also sort the p-values and consider the top K significant taxa with a varying K. We can calculate the proportions of overlapping taxa in the top K detected differentially abundant taxa between each analysis and the gold standard analysis in the CRC dataset. Here, the method adjusting for true group or study indicator is considered as gold standard.
 ```{r}
 library(ggplot2)
-truerank = rank(pv_batch, ties.method = "min")
+truerank = rank(pv_group, ties.method = "min")
 get_overlap = function(pv) {
   overlap = rep(NA,20)
   for (k in 1:20) {
@@ -159,7 +159,7 @@ method_name = c("No Correction",
                 "RUV",
                 "QuanT")
 df = data.frame(overlap = c(get_overlap(pv_no_correction), 
-                             get_overlap(pv_batch), 
+                             get_overlap(pv_group), 
                              get_overlap(pv_sva), 
                              get_overlap(pv_ruv), 
                              get_overlap(pv_quant)),

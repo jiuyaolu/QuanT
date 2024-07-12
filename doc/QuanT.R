@@ -18,7 +18,7 @@ covariates = model.matrix(~ subtype + age + gender, data=crc)[,-1]
 qsv = QuanT(crc$rela, covariates)
 
 ## -----------------------------------------------------------------------------
-plot(qsv[,1], qsv[,2], col=crc$batchid, 
+plot(qsv[,1], qsv[,2], col=crc$groupid, 
      cex.lab=0.5, cex.axis=0.5, cex=0.5)
 
 ## ----message=FALSE------------------------------------------------------------
@@ -73,21 +73,21 @@ get_pv = function(rela, surrogates) {
 }
 
 pv_no_correction = get_pv(crc$rela, NULL)
-pv_batch = get_pv(crc$rela, crc$batchid)
+pv_group = get_pv(crc$rela, crc$groupid)
 pv_quant = get_pv(crc$rela, qsv)
 pv_sva = get_pv(crc$rela, sv)
 pv_ruv = get_pv(crc$rela, ruv)
 
 ## -----------------------------------------------------------------------------
 which(p.adjust(pv_no_correction,"BH") <= 0.05)
-which(p.adjust(pv_batch,"BH") <= 0.05)
+which(p.adjust(pv_group,"BH") <= 0.05)
 which(p.adjust(pv_quant,"BH") <= 0.05)
 which(p.adjust(pv_sva,"BH") <= 0.05)
 which(p.adjust(pv_ruv,"BH") <= 0.05)
 
 ## -----------------------------------------------------------------------------
 library(ggplot2)
-truerank = rank(pv_batch, ties.method = "min")
+truerank = rank(pv_group, ties.method = "min")
 get_overlap = function(pv) {
   overlap = rep(NA,20)
   for (k in 1:20) {
@@ -104,7 +104,7 @@ method_name = c("No Correction",
                 "RUV",
                 "QuanT")
 df = data.frame(overlap = c(get_overlap(pv_no_correction), 
-                             get_overlap(pv_batch), 
+                             get_overlap(pv_group), 
                              get_overlap(pv_sva), 
                              get_overlap(pv_ruv), 
                              get_overlap(pv_quant)),
