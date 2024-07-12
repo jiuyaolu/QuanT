@@ -44,13 +44,13 @@ As you can see, the list `crc` includes the following components.
 7. gender: a factor with two levels: male, female
 
 ## Running QuanT
-Now let's run QuanT on this dataset by calling the `QuanT` function. `QuanT` has two arguments: The first is the relative abundance matrix. The second is a matrix containing all known variables, which are phenotype, age, and gender here. For now, we act as if the true batch IDs are unknown, and check whether QuanT is able to identify this unmeasured heterogeneity.
+Now let's run QuanT on this dataset by calling the `QuanT` function. `QuanT` has two arguments: The first is the relative abundance matrix. The second is a matrix containing all known variables, which are phenotype, age, and gender here. For now, we act as if the true group IDs are unknown, and check whether QuanT is able to identify this unmeasured heterogeneity.
 ```{r}
 covariates = model.matrix(~ subtype + age + gender, data=crc)[,-1]
 qsv = QuanT(crc$rela, covariates)
 ```
 
-Now we have constructed the QSVs and stored them into the `qsv` object. We can plot the first two QSVs and color the points based on the true batch ID.
+Now we have constructed the QSVs and stored them into the `qsv` object. We can plot the first two QSVs and color the points based on the true group ID.
 ```{r}
 plot(qsv[,1], qsv[,2], col=crc$batchid, 
      cex.lab=0.5, cex.axis=0.5, cex=0.5)
@@ -139,7 +139,7 @@ which(p.adjust(pv_ruv,"BH") <= 0.05)
 As can be seen from the list above, using QuanT leads to 4 discoveries which are all true discoveries according to the gold standard. SVA leads to many more false discoveries. And RUV leads to only 1 true discovery..
 
 ## Proportion of overlapping discoveries
-Other than thresholding Benjamini-Hochberg adjusted p-values at 0.05, we can also sort the p-values and consider the top K significant taxa with a varying K. We can calculate the proportions of overlapping taxa in the top K detected differentially abundant taxa between each analysis and the gold standard analysis in the CRC dataset. Here, the method adjusting for true batch or study indicator is considered as gold standard.
+Other than thresholding Benjamini-Hochberg adjusted p-values at 0.05, we can also sort the p-values and consider the top K significant taxa with a varying K. We can calculate the proportions of overlapping taxa in the top K detected differentially abundant taxa between each analysis and the gold standard analysis in the CRC dataset. Here, the method adjusting for true group or study indicator is considered as gold standard.
 ```{r}
 library(ggplot2)
 truerank = rank(pv_batch, ties.method = "min")
@@ -154,7 +154,7 @@ get_overlap = function(pv) {
 }
 
 method_name = c("No Correction",
-                "True Batch",
+                "True Group",
                 "SVA",
                 "RUV",
                 "QuanT")
