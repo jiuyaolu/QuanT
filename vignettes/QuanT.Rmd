@@ -18,8 +18,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-## QuanT
-Unmeasured technical and biomedical heterogeneity in microbiome data can arise from differential processing and design. Uncorrected for, this can lead to spurious results.  We propose the Quantile Thresholding (QuanT) approach, a comprehensive non-parametric hidden variable inference method that accommodates the complex distributions of microbial read counts and relative abundances.
+## Unmeasured heterogeneity in microbiome data and QuanT
+Unmeasured technical and biomedical heterogeneity in microbiome data can arise from differential processing and design. Uncorrected for, this can lead to spurious results.  
+
+Currently, no methods are designed to address unmeasured heterogeneity in microbiome studies. Techniques developed for genomic data, such as surrogate variable analysis (SVA) and remove unwanted variation (RUV), may be applicable. SVA is a two-step procedure for identifying surrogate variables, a general framework that was adapted by subsequent methods, including ours here. RUV employs factor analysis on control genes (via spike-in experiment or housekeeping gene estimation) to identify hidden heterogeneities. 
+
+However, SVA and RUV may not be ideally suited for microbiome data. First, they do not address the inflated zeros and over-dispersion typical in microbiome data. Second, they detect the underlying structure in the mean expression (log-transformed if needed) while ignoring other critical aspects of the complex data. Third, RUV requires users to specify the number of hidden directions: incorrect specification of these parameters may result in false positives or negatives. 
+
+We propose the Quantile Thresholding (QuanT) approach, a comprehensive non-parametric hidden variable inference method that accommodates the complex distributions of microbial read counts and relative abundances.
 
 ## The CRC dataset
 We will use the CRC dataset as an example to show how to use the `QuanT` R package. We will also run SVA and RUV and compare them with QuanT based on the CRC dataset.
@@ -60,7 +66,7 @@ The two groups are approximately seperated by the first two QSVs! This indicates
 
 ## Running SVA and RUV
 ### Installation
-We then run SVA and RUV on the CRC dataset and compare them with QuanT. First install SVA, RUV, and their dependencies if them haven't been installed.
+We then run SVA and RUV on the CRC dataset and compare them with QuanT. First install SVA, RUV, and their dependencies if they haven't been installed. We will also need the `ggplot2` and `corrplot` packages for visualization.
 ```{r message=FALSE}
 if (!require("mgcv", quietly = TRUE)) {
  install.packages("mgcv")
@@ -74,10 +80,18 @@ if (!require("sva", quietly = TRUE)) {
 if (!require("RUVSeq", quietly = TRUE)) {
   BiocManager::install("RUVSeq")
 }
+if (!require("ggplot2", quietly = TRUE)) {
+ install.packages("ggplot2")
+}
+if (!require("corrplot", quietly = TRUE)) {
+  install.packages("corrplot")
+}
 
 library(mgcv)
 library(sva)
 library(RUVSeq)
+library(ggplot2)
+library(corrplot)
 ```
 
 ### Running SVA
@@ -89,6 +103,14 @@ mod0 = mod[,1]
 svafit = svaseq(t(crc$otu),mod,mod0)
 sv = svafit$sv
 ```
+
+There are eight SVs in total. We can plot the first two SVs and color the points based on the true group ID, just like what we have done for QuanT.
+```{r}
+plot(sv[,1], sv[,2], col=crc$groupid, 
+     cex.lab=0.5, cex.axis=0.5, cex=0.5)
+```
+
+The two groups are not well separated by the first two SVs.
 
 ## Running RUV
 We then run RUV on the CRC dataset. `ruv` are the factors constructed by RUV.
@@ -103,6 +125,14 @@ lrt <- glmLRT(fit, coef=2)
 empirical = which(p.adjust(lrt$table$PValue,"BH") > 0.05)
 ruv <- RUVg(t(crc$otu), empirical, k=11)$W
 ```
+
+Similar to what we have done for QuanT and SVA, we can plot the first two factors and color the points based on the true group ID.
+```{r}
+plot(ruv[,1], ruv[,2], col=crc$groupid, 
+     cex.lab=0.5, cex.axis=0.5, cex=0.5)
+```
+
+RUV also does a good job in separating the two groups based on the first two factors. However, the number of factors needs to be chosen arbitrarily, and an inappropriate number may impair the performance. The original paper chooses 6 factors for a dataset with 128 samples. Based on this choice, we use 11 factors for the CRC data which includes 234 samples.
 
 ## Differential abundance analysis
 We now conduct differential abundance analysis based on linear regression. The goal of this analysis is to identify the taxa associated with the phenotype while adjusting for the covariates and the hidden variables constructed by each method. For benchmarking, we also performed linear regression adjusted for the true group indicators (as the gold standard) and without any adjustment (as a baseline result). 
@@ -136,12 +166,59 @@ which(p.adjust(pv_quant,"BH") <= 0.05)
 which(p.adjust(pv_sva,"BH") <= 0.05)
 which(p.adjust(pv_ruv,"BH") <= 0.05)
 ```
-As can be seen from the list above, using QuanT leads to 4 discoveries which are all true discoveries according to the gold standard. SVA leads to many more false discoveries. And RUV leads to only 1 true discovery..
+As can be seen from the list above, using QuanT leads to 4 discoveries which are all true discoveries according to the gold standard. SVA leads to many more false discoveries. And RUV leads to only 1 true discovery. We can visualize the results by running the following code to generate a heatmap showing the number of overlapping discoveries between each pair of methods.
+
+```{r}
+get_overlap = function(pv, method_name, alpha) {
+  n_method = ncol(pv)
+  discovery = apply(pv, 2, function(x) which(p.adjust(x,"BH")<=alpha))
+  concordance = matrix(NA, nrow=n_method,ncol=n_method)
+  for (i in 1:n_method) {
+    for (j in i:n_method) {
+      if (length(discovery) == 0) {
+        concordance[i,j] = 0
+      } else if ("list" %in% class(discovery)) {
+        concordance[i,j] = length(intersect(discovery[[i]], discovery[[j]]))
+      } else {
+        concordance[i,j] = length(intersect(discovery[,i], discovery[,j]))
+      }
+      concordance[j,i] = concordance[i,j]
+    }
+  }
+  rownames(concordance) = colnames(concordance) = method_name
+  concordance
+}
+plot_overlap = function(pv, method_name, alpha=0.05) {
+  concordance = get_overlap(pv, method_name, alpha)
+  maxconcord = max(concordance)
+  corrplot(concordance, 
+           method = "color", 
+           type = "upper",
+           col.lim = c(0,maxconcord),
+           # col = rev(COL2('RdYlBu',200)),
+           col = COL1("YlGn",200),
+           addCoef.col = "black",
+           is.corr = FALSE,
+           tl.cex = 0.4, number.cex = 0.4,
+           tl.srt = 0,
+           cl.pos = "n")
+}
+method_name = c("No Correction",
+                "True Group",
+                "SVA",
+                "RUV",
+                "QuanT")
+plot_overlap(cbind(pv_no_correction, 
+                   pv_group, 
+                   pv_sva, 
+                   pv_ruv, 
+                   pv_quant),
+             method_name)
+```
 
 ## Proportion of overlapping discoveries
 Other than thresholding Benjamini-Hochberg adjusted p-values at 0.05, we can also sort the p-values and consider the top K significant taxa with a varying K. We can calculate the proportions of overlapping taxa in the top K detected differentially abundant taxa between each analysis and the gold standard analysis in the CRC dataset. Here, the method adjusting for true group or study indicator is considered as gold standard.
 ```{r}
-library(ggplot2)
 truerank = rank(pv_group, ties.method = "min")
 get_overlap = function(pv) {
   overlap = rep(NA,20)
@@ -152,12 +229,6 @@ get_overlap = function(pv) {
   }
   return(overlap)
 }
-
-method_name = c("No Correction",
-                "True Group",
-                "SVA",
-                "RUV",
-                "QuanT")
 df = data.frame(overlap = c(get_overlap(pv_no_correction), 
                              get_overlap(pv_group), 
                              get_overlap(pv_sva), 

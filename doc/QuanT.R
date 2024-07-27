@@ -34,10 +34,18 @@ if (!require("sva", quietly = TRUE)) {
 if (!require("RUVSeq", quietly = TRUE)) {
   BiocManager::install("RUVSeq")
 }
+if (!require("ggplot2", quietly = TRUE)) {
+ install.packages("ggplot2")
+}
+if (!require("corrplot", quietly = TRUE)) {
+  install.packages("corrplot")
+}
 
 library(mgcv)
 library(sva)
 library(RUVSeq)
+library(ggplot2)
+library(corrplot)
 
 ## -----------------------------------------------------------------------------
 mod = model.matrix(~ subtype + age + gender, data=crc)
@@ -45,6 +53,10 @@ mod0 = mod[,1]
 
 svafit = svaseq(t(crc$otu),mod,mod0)
 sv = svafit$sv
+
+## -----------------------------------------------------------------------------
+plot(sv[,1], sv[,2], col=crc$groupid, 
+     cex.lab=0.5, cex.axis=0.5, cex=0.5)
 
 ## -----------------------------------------------------------------------------
 design <- model.matrix(~ subtype + age + gender, data=crc)
@@ -56,6 +68,10 @@ fit <- glmFit(y, design)
 lrt <- glmLRT(fit, coef=2)
 empirical = which(p.adjust(lrt$table$PValue,"BH") > 0.05)
 ruv <- RUVg(t(crc$otu), empirical, k=11)$W
+
+## -----------------------------------------------------------------------------
+plot(ruv[,1], ruv[,2], col=crc$groupid, 
+     cex.lab=0.5, cex.axis=0.5, cex=0.5)
 
 ## -----------------------------------------------------------------------------
 get_pv = function(rela, surrogates) {
@@ -86,7 +102,53 @@ which(p.adjust(pv_sva,"BH") <= 0.05)
 which(p.adjust(pv_ruv,"BH") <= 0.05)
 
 ## -----------------------------------------------------------------------------
-library(ggplot2)
+get_overlap = function(pv, method_name, alpha) {
+  n_method = ncol(pv)
+  discovery = apply(pv, 2, function(x) which(p.adjust(x,"BH")<=alpha))
+  concordance = matrix(NA, nrow=n_method,ncol=n_method)
+  for (i in 1:n_method) {
+    for (j in i:n_method) {
+      if (length(discovery) == 0) {
+        concordance[i,j] = 0
+      } else if ("list" %in% class(discovery)) {
+        concordance[i,j] = length(intersect(discovery[[i]], discovery[[j]]))
+      } else {
+        concordance[i,j] = length(intersect(discovery[,i], discovery[,j]))
+      }
+      concordance[j,i] = concordance[i,j]
+    }
+  }
+  rownames(concordance) = colnames(concordance) = method_name
+  concordance
+}
+plot_overlap = function(pv, method_name, alpha=0.05) {
+  concordance = get_overlap(pv, method_name, alpha)
+  maxconcord = max(concordance)
+  corrplot(concordance, 
+           method = "color", 
+           type = "upper",
+           col.lim = c(0,maxconcord),
+           # col = rev(COL2('RdYlBu',200)),
+           col = COL1("YlGn",200),
+           addCoef.col = "black",
+           is.corr = FALSE,
+           tl.cex = 0.4, number.cex = 0.4,
+           tl.srt = 0,
+           cl.pos = "n")
+}
+method_name = c("No Correction",
+                "True Group",
+                "SVA",
+                "RUV",
+                "QuanT")
+plot_overlap(cbind(pv_no_correction, 
+                   pv_group, 
+                   pv_sva, 
+                   pv_ruv, 
+                   pv_quant),
+             method_name)
+
+## -----------------------------------------------------------------------------
 truerank = rank(pv_group, ties.method = "min")
 get_overlap = function(pv) {
   overlap = rep(NA,20)
@@ -97,12 +159,6 @@ get_overlap = function(pv) {
   }
   return(overlap)
 }
-
-method_name = c("No Correction",
-                "True Group",
-                "SVA",
-                "RUV",
-                "QuanT")
 df = data.frame(overlap = c(get_overlap(pv_no_correction), 
                              get_overlap(pv_group), 
                              get_overlap(pv_sva), 

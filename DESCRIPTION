@@ -21,6 +21,7 @@ Imports:
     RSpectra
 Suggests: 
     BiocManager,
+    corrplot,
     ggplot2,
     knitr,
     mgcv,
