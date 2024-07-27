@@ -5,6 +5,7 @@ vignette: >
   %\VignetteIndexEntry{Introduction to QuanT}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+bibliography: references.bib
 ---
 
 ```{r, include = FALSE}
@@ -21,7 +22,7 @@ knitr::opts_chunk$set(
 ## Unmeasured heterogeneity in microbiome data and QuanT
 Unmeasured technical and biomedical heterogeneity in microbiome data can arise from differential processing and design. Uncorrected for, this can lead to spurious results.  
 
-Currently, no methods are designed to address unmeasured heterogeneity in microbiome studies. Techniques developed for genomic data, such as surrogate variable analysis (SVA) and remove unwanted variation (RUV), may be applicable. SVA is a two-step procedure for identifying surrogate variables, a general framework that was adapted by subsequent methods, including ours here. RUV employs factor analysis on control genes (via spike-in experiment or housekeeping gene estimation) to identify hidden heterogeneities. 
+Currently, no methods are designed to address unmeasured heterogeneity in microbiome studies. Techniques developed for genomic data, such as surrogate variable analysis (SVA) [@leek2007capturing] and remove unwanted variation (RUV) [@risso2014normalization], may be applicable. SVA is a two-step procedure for identifying surrogate variables, a general framework that was adapted by subsequent methods, including ours here. RUV employs factor analysis on control genes (via spike-in experiment or housekeeping gene estimation) to identify hidden heterogeneities. 
 
 However, SVA and RUV may not be ideally suited for microbiome data. First, they do not address the inflated zeros and over-dispersion typical in microbiome data. Second, they detect the underlying structure in the mean expression (log-transformed if needed) while ignoring other critical aspects of the complex data. Third, RUV requires users to specify the number of hidden directions: incorrect specification of these parameters may result in false positives or negatives. 
 
@@ -30,7 +31,7 @@ We propose the Quantile Thresholding (QuanT) approach, a comprehensive non-param
 ## The CRC dataset
 We will use the CRC dataset as an example to show how to use the `QuanT` R package. We will also run SVA and RUV and compare them with QuanT based on the CRC dataset.
 
-The CRC dataset originates from the curatedMetagenomicData package, which offers standardized, curated human microbiome data across various studies. We analyzed two studies focused on colorectal cancer (CRC), considering distinct patient phenotypes (adenocarcinoma, adenoma, advanced adenoma, carcinoma, and control) as the primary variable of interest, and age and gender as covariates for adjustment. The processed data encompassed 166 genera across 234 samples. 
+The CRC dataset originates from the curatedMetagenomicData package [@pasolli2017accessible], which offers standardized, curated human microbiome data across various studies. We analyzed two studies [@feng2015gut; @thomas2019metagenomic] focused on colorectal cancer (CRC), considering distinct patient phenotypes (adenocarcinoma, adenoma, advanced adenoma, carcinoma, and control) as the primary variable of interest, and age and gender as covariates for adjustment. The processed data encompassed 166 genera across 234 samples. 
 
 This dataset is included in the package and is lazy-loaded when loading the package. Let's have a quick look at the data.
 ```{r}
@@ -255,3 +256,5 @@ plot(pic_overlap)
 ```
 
 As can be seen from the figure, QuanT is most consistent with the gold standard in terms of top K differential abundant taxa.
+
+## References
