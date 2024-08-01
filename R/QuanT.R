@@ -20,7 +20,7 @@
 #' covariates = model.matrix(~ subtype + age + gender, data=crc)[,-1]
 #' qsv = QuanT(crc$rela, covariates)
 #' plot(qsv[,1:2], col=crc$batchid)
-QuanT = function(dat, covariates, q=NULL) {
+QuanT = function(dat, covariates, q=NULL, B = 20) {
   zp = colMeans(dat==0)
   z = covariates
 
@@ -33,7 +33,7 @@ QuanT = function(dat, covariates, q=NULL) {
   pcid = SelectiveSeqStep(res_test$pv_ad, alpha = 0.05)$signif
   u = res_test$u[,pcid]
   u = matrix(u,nrow=nrow(dat))
-  res_stage2 = stage2(dat, zp, z, q, u)
+  res_stage2 = stage2(dat, zp, z, q, u, B = B)
   pc = res_stage2$pc[[length(res_stage2$pc)]]
 
   pc
