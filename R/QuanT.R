@@ -10,6 +10,7 @@
 #' interest and other covariates.
 #' @param q The quantile levels to be used. If NULL, QuanT will choose the
 #' quantile levels based on the proportion of zeroes in the data.
+#' @param B The number of iterations.
 #'
 #' @return \code{QuanT} outputs the QSVs, which are surrogates for the
 #' unmeasured heterogeneity in the data. They are stored in a matrix with the

@@ -4,7 +4,7 @@
 \alias{QuanT}
 \title{QuanT}
 \usage{
-QuanT(dat, covariates, q = NULL)
+QuanT(dat, covariates, q = NULL, B = 20)
 }
 \arguments{
 \item{dat}{The abundance matrix with rows as samples and columns as taxa.
@@ -15,6 +15,8 @@ interest and other covariates.}
 
 \item{q}{The quantile levels to be used. If NULL, QuanT will choose the
 quantile levels based on the proportion of zeroes in the data.}
+
+\item{B}{The number of iterations.}
 }
 \value{
 \code{QuanT} outputs the QSVs, which are surrogates for the
