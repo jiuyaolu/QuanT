@@ -32,10 +32,14 @@ QuanT = function(dat, covariates, q=NULL, B = 20) {
   res_dual = get_dual(dat, zp, z, q)
   res_test = test_for_uniformity(res_dual$dual_centered)
   pcid = SelectiveSeqStep(res_test$pv_ad, alpha = 0.05)$signif
-  u = res_test$u[,pcid]
-  u = matrix(u,nrow=nrow(dat))
-  res_stage2 = stage2(dat, zp, z, q, u, B = B)
-  pc = res_stage2$pc[[length(res_stage2$pc)]]
+  if (all(pcid==0)) {
+    return(0)
+  } else {
+    u = res_test$u[,pcid]
+    u = matrix(u,nrow=nrow(dat))
+    res_stage2 = stage2(dat, zp, z, q, u, B = B)
+    pc = res_stage2$pc[[length(res_stage2$pc)]]
 
-  pc
+    return(pc)
+  }
 }
