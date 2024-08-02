@@ -195,7 +195,7 @@ select_quantile = function(dat, zp, z, test = "AD",
 }
 
 stage2 = function (dat, zp, z, q, u, test = "rank", B = 20,
-                   cutoff.b = 0.01, cutoff.gam = 0.01,
+                   cutoff.b = 0, cutoff.gam = Inf,
                    cutoff.b.range = c(1e-3,1e-2,1e-1),
                    cutoff.gam.range = c(1e-3,1e-2,0.1,0.2),
                    min_taxa_proportion = 0.2)
