@@ -207,9 +207,6 @@ stage2 = function (dat, zp, z, q, u, test = "rank", B = 20,
   adaptive = TRUE
   warmup = 0.5
 
-  cutoff.b.range0 = cutoff.b.range
-  cutoff.gam.range0 = cutoff.gam.range
-
   feasible_pair = data.frame(tau = rep(q,p),
                              id_taxon = rep(1:p,each=K),
                              zp = rep(zp,each=K))
@@ -254,8 +251,6 @@ stage2 = function (dat, zp, z, q, u, test = "rank", B = 20,
 
 
     if (adaptive) {
-      cutoff.b.range = cutoff.b.range0
-      cutoff.gam.range = cutoff.gam.range0
 
       N.b = length(cutoff.b.range); N.gam = length(cutoff.gam.range)
       cor_u = matrix(nrow=N.b, ncol=N.gam, dimnames = list(cutoff.b.range,cutoff.gam.range))
@@ -272,17 +267,21 @@ stage2 = function (dat, zp, z, q, u, test = "rank", B = 20,
           }
         }
       }
-      max_cor_u = max(cor_u,na.rm=TRUE)
-      whichmax = which(cor_u==max_cor_u, arr.ind = TRUE)
-      cutoff.b.grid = cutoff.b = cutoff.b.range[whichmax[1,1]]
-      cutoff.gam.grid = cutoff.gam = cutoff.gam.range[whichmax[1,2]]
-
+      if (all(is.na(cor_u))) {
+        cutoff.b.grid = cutoff.b
+        cutoff.gam.grid = cutoff.gam
+      } else {
+        max_cor_u = max(cor_u,na.rm=TRUE)
+        whichmax = which(cor_u==max_cor_u, arr.ind = TRUE)
+        cutoff.b.grid = cutoff.b.range[whichmax[1,1]]
+        cutoff.gam.grid = cutoff.gam.range[whichmax[1,2]]
+      }
     }
 
-    pprob.b <- ptmp.b.max<=cutoff.b
+    pprob.b <- ptmp.b.max<=cutoff.b.grid
     #pprob.b <- (1 - sva:::edge.lfdr(ptmp.b,adj=100))
 
-    pprob.gam <- ptmp.gam.max<=cutoff.gam
+    pprob.gam <- ptmp.gam.max<=cutoff.gam.grid
     #pprob.gam <- (1 - sva:::edge.lfdr(ptmp.gam,adj=100))
 
 
