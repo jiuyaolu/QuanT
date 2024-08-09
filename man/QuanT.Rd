@@ -4,7 +4,7 @@
 \alias{QuanT}
 \title{QuanT}
 \usage{
-QuanT(dat, covariates, q = NULL, B = 20)
+QuanT(dat, covariates, q = NULL, B = 20, parallel = FALSE, num.cores = 1)
 }
 \arguments{
 \item{dat}{The abundance matrix with rows as samples and columns as taxa.
@@ -17,6 +17,10 @@ interest and other covariates.}
 quantile levels based on the proportion of zeroes in the data.}
 
 \item{B}{The number of iterations.}
+
+\item{parallel}{Whether to use parallel computation or not}
+
+\item{num.cores}{How many cores to use if parallel==TRUE}
 }
 \value{
 \code{QuanT} outputs the QSVs, which are surrogates for the

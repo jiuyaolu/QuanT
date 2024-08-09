@@ -11,6 +11,8 @@
 #' @param q The quantile levels to be used. If NULL, QuanT will choose the
 #' quantile levels based on the proportion of zeroes in the data.
 #' @param B The number of iterations.
+#' @param parallel Whether to use parallel computation or not
+#' @param num.cores How many cores to use if parallel==TRUE
 #'
 #' @return \code{QuanT} outputs the QSVs, which are surrogates for the
 #' unmeasured heterogeneity in the data. They are stored in a matrix with the
@@ -21,7 +23,7 @@
 #' covariates = model.matrix(~ subtype + age + gender, data=crc)[,-1]
 #' qsv = QuanT(crc$rela, covariates)
 #' plot(qsv[,1:2], col=crc$batchid)
-QuanT = function(dat, covariates, q=NULL, B = 20) {
+QuanT = function(dat, covariates, q=NULL, B = 20, parallel = FALSE, num.cores = 1) {
   zp = colMeans(dat==0)
   z = covariates
 
@@ -37,7 +39,8 @@ QuanT = function(dat, covariates, q=NULL, B = 20) {
   } else {
     u = res_test$u[,pcid]
     u = matrix(u,nrow=nrow(dat))
-    res_stage2 = stage2(dat, zp, z, q, u, B = B)
+    res_stage2 = stage2(dat, zp, z, q, u, B = B,
+                        parallel = parallel, num.cores = num.cores)
     pc = res_stage2$pc[[length(res_stage2$pc)]]
 
     return(pc)

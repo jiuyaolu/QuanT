@@ -198,7 +198,8 @@ stage2 = function (dat, zp, z, q, u, test = "rank", B = 20,
                    cutoff.b = 0, cutoff.gam = Inf,
                    cutoff.b.range = c(1e-3,1e-2,1e-1),
                    cutoff.gam.range = c(1e-3,1e-2,0.1,0.2),
-                   min_taxa_proportion = 0.2)
+                   min_taxa_proportion = 0.2,
+                   parallel, num.cores)
 {
   n = nrow(dat)
   p = ncol(dat)
@@ -228,23 +229,45 @@ stage2 = function (dat, zp, z, q, u, test = "rank", B = 20,
   converge = FALSE
 
   for (i in 1:B) {
-    ptmp.b = sapply(1:nrow(feasible_pair), function(t){
-      quantreg::rq.test.rank(cbind(1,pc[[i]]),
-                             z,
-                             dat[,feasible_pair$id_taxon[t]],
-                             score="tau",
-                             tau=feasible_pair$tau[t])$pvalue
-    })
+    if (parallel) {
+      ptmp.b = parallel::mclapply(1:nrow(feasible_pair), function(t){
+        quantreg::rq.test.rank(cbind(1,pc[[i]]),
+                               z,
+                               dat[,feasible_pair$id_taxon[t]],
+                               score="tau",
+                               tau=feasible_pair$tau[t])$pvalue
+      }, mc.cores = num.cores) %>% unlist()
+    } else {
+      ptmp.b = sapply(1:nrow(feasible_pair), function(t){
+        quantreg::rq.test.rank(cbind(1,pc[[i]]),
+                               z,
+                               dat[,feasible_pair$id_taxon[t]],
+                               score="tau",
+                               tau=feasible_pair$tau[t])$pvalue
+      })
+    }
+
     ptmp.b.max = sapply(feasible_pair$id_taxon,
                         function(j) max(ptmp.b[feasible_pair$id_taxon==j]))
 
-    ptmp.gam = sapply(1:nrow(feasible_pair), function(t){
-      quantreg::rq.test.rank(matrix(1,nrow=n,ncol=1),
-                             pc[[i]],
-                             dat[,feasible_pair$id_taxon[t]],
-                             score="tau",
-                             tau=feasible_pair$tau[t])$pvalue
-    })
+    if (parallel) {
+      ptmp.gam = parallel::mclapply(1:nrow(feasible_pair), function(t){
+        quantreg::rq.test.rank(matrix(1,nrow=n,ncol=1),
+                               pc[[i]],
+                               dat[,feasible_pair$id_taxon[t]],
+                               score="tau",
+                               tau=feasible_pair$tau[t])$pvalue
+      }, mc.cores = num.cores) %>% unlist()
+    } else {
+      ptmp.gam = sapply(1:nrow(feasible_pair), function(t){
+        quantreg::rq.test.rank(matrix(1,nrow=n,ncol=1),
+                               pc[[i]],
+                               dat[,feasible_pair$id_taxon[t]],
+                               score="tau",
+                               tau=feasible_pair$tau[t])$pvalue
+      })
+    }
+
     ptmp.gam.max = sapply(feasible_pair$id_taxon,
                           function(j)max(ptmp.gam[feasible_pair$id_taxon==j]))
 
