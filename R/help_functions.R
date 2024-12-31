@@ -7,10 +7,10 @@ update_pc = function(dual0_centered, pprob, pc) {
   weighted_dual0_centered = t(t(dual0_centered) * pprob)
   # svdfit = svd(weighted_dual0_centered)
   svdfit = RSpectra::svds(weighted_dual0_centered,
-                          min(6,
-                              nrow(weighted_dual0_centered),
-                              ncol(weighted_dual0_centered),
-                              sum(pprob>0)))
+                          max(K,min(6,
+                                    nrow(weighted_dual0_centered),
+                                    ncol(weighted_dual0_centered),
+                                    sum(pprob>0))))
   u = matrix(svdfit$u[,which(svdfit$d>1e-10)],nrow=n)
 
   for (k in 1:K) {
