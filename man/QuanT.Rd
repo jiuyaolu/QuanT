@@ -4,7 +4,16 @@
 \alias{QuanT}
 \title{QuanT}
 \usage{
-QuanT(dat, covariates, q = NULL, B = 20, parallel = FALSE, num.cores = 1)
+QuanT(
+  dat,
+  covariates,
+  q = NULL,
+  B = 10,
+  parallel = FALSE,
+  num.cores = 1,
+  alpha = 0.1,
+  visualization = FALSE
+)
 }
 \arguments{
 \item{dat}{The abundance matrix with rows as samples and columns as taxa.

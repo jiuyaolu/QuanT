@@ -157,6 +157,23 @@ SelectiveSeqStepPlus = function(p, alpha = 0.05, q = alpha/(1-alpha)) {
   list(signif = signif, out = out, k = k)
 }
 
+mySelectiveSeqStep = function(p, alpha = 0.05, q = alpha/(1-alpha)+1e-5) {
+  out = rep(NA, length(p))
+  for (k in seq_along(p)) {
+    out[k] = sum(p[1:k]>alpha) / sum(p[1:k]<=alpha) / ((1-alpha)/alpha)
+  }
+
+  if (min(out)>q) {
+    k = 0
+    signif = 0
+  } else {
+    k = which(out[-length(out)] <= q & out[-1] > q)[1]
+    signif = which(p[1:k]<=alpha)
+    k = length(signif)
+  }
+
+  list(signif = signif, out = out, k = k)
+}
 
 stage2 = function (dat, zp, z, q, u, test = "rank", B = 10,
                    parallel, num.cores)
@@ -172,13 +189,37 @@ stage2 = function (dat, zp, z, q, u, test = "rank", B = 10,
                              zp = rep(zp,each=K))
   feasible_pair = feasible_pair[feasible_pair$tau >= feasible_pair$zp,]
 
-  dual0 = dual0_centered = matrix(0, nrow = n, ncol = nrow(feasible_pair))
+  # dual0 = dual0_centered = matrix(0, nrow = n, ncol = nrow(feasible_pair))
+  #
+  # for (t in 1:nrow(feasible_pair)) {
+  #   fit0 = quantreg::rq(dat[,feasible_pair$id_taxon[t]] ~ 1,
+  #                       tau = feasible_pair$tau[t])
+  #   dual0[,t] = fit0$dual
+  #   dual0_centered[,t] = fit0$dual - 1 + feasible_pair$tau[t]
+  # }
 
-  for (t in 1:nrow(feasible_pair)) {
-    fit0 = quantreg::rq(dat[,feasible_pair$id_taxon[t]] ~ 1,
-                        tau = feasible_pair$tau[t])
-    dual0[,t] = fit0$dual
-    dual0_centered[,t] = fit0$dual - 1 + feasible_pair$tau[t]
+
+  if (parallel) {
+    results_list <- parallel::mclapply(1:nrow(feasible_pair), function(t) {
+      fit0 <- quantreg::rq(dat[, feasible_pair$id_taxon[t]] ~ 1,
+                           tau = feasible_pair$tau[t])
+      list(
+        dual0 = fit0$dual,
+        dual0_centered = fit0$dual - 1 + feasible_pair$tau[t]
+      )
+    }, mc.cores = num.cores)
+
+    dual0 <- do.call(cbind, lapply(results_list, `[[`, "dual0"))
+    dual0_centered <- do.call(cbind, lapply(results_list, `[[`, "dual0_centered"))
+
+  } else {
+    dual0 <- dual0_centered <- matrix(0, nrow = n, ncol = nrow(feasible_pair))
+    for (t in 1:nrow(feasible_pair)) {
+      fit0 <- quantreg::rq(dat[, feasible_pair$id_taxon[t]] ~ 1,
+                           tau = feasible_pair$tau[t])
+      dual0[, t] <- fit0$dual
+      dual0_centered[, t] <- fit0$dual - 1 + feasible_pair$tau[t]
+    }
   }
 
   pc = vector("list",length=B+2)
@@ -278,10 +319,6 @@ stage2 = function (dat, zp, z, q, u, test = "rank", B = 10,
        dual0 = dual0,
        dual0_centered = dual0_centered,
        pprob = pprob,
-       cutoff.b.grid = cutoff.b.grid,
-       cutoff.gam.grid = cutoff.gam.grid,
-       cutoff.b = cutoff.b,
-       cutoff.gam = cutoff.gam,
        iterations = i)
 }
 

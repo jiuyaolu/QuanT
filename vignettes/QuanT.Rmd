@@ -54,7 +54,8 @@ As you can see, the list `crc` includes the following components.
 Now let's run QuanT on this dataset by calling the `QuanT` function. `QuanT` has two arguments: The first is the relative abundance matrix. The second is a matrix containing all known variables, which are phenotype, age, and gender here. For now, we act as if the true group IDs are unknown, and check whether QuanT is able to identify this unmeasured heterogeneity.
 ```{r}
 covariates = model.matrix(~ subtype + age + gender, data=crc)[,-1]
-qsv = QuanT(crc$rela, covariates)
+qsv = QuanT(crc$rela, covariates, 
+            parallel = TRUE, num.cores = 8)
 ```
 
 Now we have constructed the QSVs and stored them into the `qsv` object. We can plot the first two QSVs and color the points based on the true group ID.
@@ -64,6 +65,15 @@ plot(qsv[,1], qsv[,2], col=crc$groupid,
 ```
 
 The two groups are approximately seperated by the first two QSVs! This indicates that QuanT has succesfully identified the unmeasured heterogeneity.
+
+We can set the argument `visualization` to TRUE when calling the `QuanT` function. This will display the singular values of the (binarized and centered) residual matrix that we obtain through quantile regression.
+```{r}
+qsv = QuanT(crc$rela, covariates, 
+            parallel = TRUE, num.cores = 8, 
+            visualization = TRUE)
+```
+
+If you have a `phyloseq` object, you could just input it as the first argument of the `QuanT` function. The function will automatically handle it.
 
 ## Running SVA and RUV
 ### Installation
@@ -216,45 +226,5 @@ plot_overlap(cbind(pv_no_correction,
                    pv_quant),
              method_name)
 ```
-
-## Proportion of overlapping discoveries
-Other than thresholding Benjamini-Hochberg adjusted p-values at 0.05, we can also sort the p-values and consider the top K significant taxa with a varying K. We can calculate the proportions of overlapping taxa in the top K detected differentially abundant taxa between each analysis and the gold standard analysis in the CRC dataset. Here, the method adjusting for true group or study indicator is considered as gold standard.
-```{r}
-truerank = rank(pv_group, ties.method = "min")
-get_overlap = function(pv) {
-  overlap = rep(NA,20)
-  for (k in 1:20) {
-    dis = which(rank(pv, ties.method = "min") <= k)
-    truetopK = which(truerank <= k)
-    overlap[k] = mean(dis%in%truetopK)
-  }
-  return(overlap)
-}
-df = data.frame(overlap = c(get_overlap(pv_no_correction), 
-                             get_overlap(pv_group), 
-                             get_overlap(pv_sva), 
-                             get_overlap(pv_ruv), 
-                             get_overlap(pv_quant)),
-                 method = rep(method_name,each=20),
-                 K = rep(1:20,length(method_name)))
-df$method = factor(df$method, method_name)
-pic_overlap = ggplot(df, aes(x = K,
-             y = overlap,
-             color = method)) +
-  geom_line(lwd = 0.6) +
-  theme_bw() +
-  scale_color_manual(values = c("#7FC97F","#BEAED4","#FDC086","#386CB0","#F0027F")) +
-  labs(color = "Method",
-       shape = "Method",
-       linetype = "Method",
-       x = "Top K Detected Taxa",
-       y = "Proportion of overlapping Discoveries") +
-    theme(legend.position="bottom",
-          text = element_text(size = 6)) +
-  guides(color = guide_legend(nrow = 2))
-plot(pic_overlap)
-```
-
-As can be seen from the figure, QuanT is most consistent with the gold standard in terms of top K differential abundant taxa.
 
 ## References
