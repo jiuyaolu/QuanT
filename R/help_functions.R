@@ -43,6 +43,15 @@ q.unicirc = function( q, N ) {
   return(q.vals)
 }
 
+cauchy_combination = function(pv, threshold=NA) {
+  if (is.na(threshold)) {
+    pv0 = pv
+  } else {
+    pv0 = pmin(pmax(pv,threshold),1-threshold)
+  }
+  stats_cauchy = mean(tan((0.5 - pv0) * pi))
+  1 - pcauchy(stats_cauchy)
+}
 
 test_for_uniformity = function(dual_centered) {
   df = as.numeric(Matrix::rankMatrix(dual_centered))
@@ -55,6 +64,15 @@ test_for_uniformity = function(dual_centered) {
     nortest::cvm.test(x)$p.value)
   pv_ad = apply(s$u[,1:df], 2, function(x)
     nortest::ad.test(x)$p.value)
+  pv_pearson = apply(s$u[,1:df], 2, function(x)
+    nortest::pearson.test(x)$p.value)
+  pv_sf = apply(s$u[,1:df], 2, function(x)
+    nortest::sf.test(x)$p.value)
+
+  pv_comb = sapply(1:df,
+                   function(k) cauchy_combination(c(pv_ks[k],
+                                                    pv_sf[k],
+                                                    pv_ad[k])))
 
   list(df = df,
        d = s$d,
@@ -63,7 +81,10 @@ test_for_uniformity = function(dual_centered) {
        s = s,
        pv_ks = pv_ks,
        pv_ad = pv_ad,
-       pv_cvm = pv_cvm)
+       pv_cvm = pv_cvm,
+       pv_pearson = pv_pearson,
+       pv_sf = pv_sf,
+       pv_comb = pv_comb)
 }
 
 SeqStep = function(p, alpha = 0.05, q = alpha/(1-alpha)+1e-5) {
@@ -136,76 +157,14 @@ SelectiveSeqStepPlus = function(p, alpha = 0.05, q = alpha/(1-alpha)) {
   list(signif = signif, out = out, k = k)
 }
 
-select_quantile = function(dat, zp, z, test = "AD",
-                           alpha = 0.05,
-                           min_taxa_proportion = 0.2,
-                           quantile_range = c(0.1,0.25,0.5,0.75,0.9)) {
-  K = length(quantile_range)
-  quantile_to_use = quantile_range
 
-  q = quantile_range
-  res_dual = get_dual(dat, zp, z, q)
-  res_test = test_for_uniformity(res_dual$dual_centered)
-  if (test == "KS") {
-    pv = res_test$pv_ks
-  } else if (test == "AD") {
-    pv = res_test$pv_ad
-  }
-  pcid = SelectiveSeqStep(pv, alpha = alpha)$signif
-  if (!0%in%pcid) {
-    min_p = stats::median(pv[pcid])
-    n_pc = length(pcid)
-  } else {
-    min_p = Inf
-    n_pc = 0
-  }
-
-  min_p_subset = n_pc_subset = rep(NA, K)
-  for (k in 1:K) {
-    q = quantile_range[-k]
-    res_dual = get_dual(dat, zp, z, q)
-    if (dplyr::n_distinct(res_dual$feasible_pair$id_taxon) > min_taxa_proportion * ncol(dat)) {
-      res_test = test_for_uniformity(res_dual$dual_centered)
-      if (test == "KS") {
-        pv = res_test$pv_ks
-      } else if (test == "AD") {
-        pv = res_test$pv_ad
-      }
-      pcid = SelectiveSeqStep(pv, alpha = alpha)$signif
-      if (!0%in%pcid) {
-        min_p_subset[k] = stats::median(pv[pcid])
-        n_pc_subset[k] = length(pcid)
-      } else {
-        min_p_subset[k] = Inf
-        n_pc_subset[k] = 0
-      }
-    }
-  }
-
-  max_n_pc_subset = max(n_pc_subset)
-  if (max_n_pc_subset>n_pc) {
-    id_max = which(n_pc_subset == max_n_pc_subset)
-    k = id_max[which.min(min_p_subset[id_max])]
-    # if (min_p_subset[k] < min_p) {
-    quantile_to_use = quantile_range[-k]
-    # }
-  }
-
-  return(quantile_to_use)
-}
-
-stage2 = function (dat, zp, z, q, u, test = "rank", B = 20,
-                   cutoff.b = 0, cutoff.gam = Inf,
-                   cutoff.b.range = c(1e-3,1e-2,1e-1),
-                   cutoff.gam.range = c(1e-3,1e-2,0.1,0.2),
-                   min_taxa_proportion = 0.2,
+stage2 = function (dat, zp, z, q, u, test = "rank", B = 10,
                    parallel, num.cores)
 {
   n = nrow(dat)
   p = ncol(dat)
   K = length(q)
 
-  adaptive = TRUE
   warmup = 0.5
 
   feasible_pair = data.frame(tau = rep(q,p),
@@ -273,39 +232,11 @@ stage2 = function (dat, zp, z, q, u, test = "rank", B = 20,
 
 
 
-    if (adaptive) {
+    # pprob.b <- ptmp.b.max<=cutoff.b.grid
+    pprob.b <- (1 - sva:::edge.lfdr(ptmp.b,adj=100))
 
-      N.b = length(cutoff.b.range); N.gam = length(cutoff.gam.range)
-      cor_u = matrix(nrow=N.b, ncol=N.gam, dimnames = list(cutoff.b.range,cutoff.gam.range))
-      for (ii in 1:N.b) {
-        for (jj in 1:N.gam) {
-          pprob_tmp = (ptmp.b.max>=cutoff.b.range[ii]) * (ptmp.gam.max<cutoff.gam.range[jj])
-
-          if (sum(pprob_tmp)>0) {
-            if (dplyr::n_distinct(feasible_pair$id_taxon[pprob_tmp>0]) > p*min_taxa_proportion) {
-              res_update = update_pc(dual0_centered,pprob_tmp,pc[[1]])
-              # newpc = res_update$pc
-              cor_u[ii,jj] = max(res_update$maxcor, na.rm=TRUE)
-            }
-          }
-        }
-      }
-      if (all(is.na(cor_u))) {
-        cutoff.b.grid = cutoff.b
-        cutoff.gam.grid = cutoff.gam
-      } else {
-        max_cor_u = max(cor_u,na.rm=TRUE)
-        whichmax = which(cor_u==max_cor_u, arr.ind = TRUE)
-        cutoff.b.grid = cutoff.b.range[whichmax[1,1]]
-        cutoff.gam.grid = cutoff.gam.range[whichmax[1,2]]
-      }
-    }
-
-    pprob.b <- ptmp.b.max<=cutoff.b.grid
-    #pprob.b <- (1 - sva:::edge.lfdr(ptmp.b,adj=100))
-
-    pprob.gam <- ptmp.gam.max<=cutoff.gam.grid
-    #pprob.gam <- (1 - sva:::edge.lfdr(ptmp.gam,adj=100))
+    # pprob.gam <- ptmp.gam.max<=cutoff.gam.grid
+    pprob.gam <- (1 - sva:::edge.lfdr(ptmp.gam,adj=100))
 
 
 

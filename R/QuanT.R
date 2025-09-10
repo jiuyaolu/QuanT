@@ -28,12 +28,13 @@ QuanT = function(dat, covariates, q=NULL, B = 20, parallel = FALSE, num.cores = 
   z = covariates
 
   if (is.null(q)) {
-    q = stats::quantile(zp[zp<0.9], c(0.1,0.25,0.5,0.75,0.9))
+    # q = stats::quantile(zp[zp<0.9], c(0.1,0.25,0.5,0.75,0.9))
+    q = stats::quantile(zp, seq(0.1,0.9,by=0.005))
   }
 
   res_dual = get_dual(dat, zp, z, q)
   res_test = test_for_uniformity(res_dual$dual_centered)
-  pcid = SelectiveSeqStep(res_test$pv_ad, alpha = 0.05)$signif
+  pcid = SelectiveSeqStep(res_test$pv_comb, alpha = 0.05)$signif
   if (all(pcid==0)) {
     return(0)
   } else {
